@@ -9,41 +9,33 @@
         body { font-family: sans-serif; background-color: #f0f2f5; margin: 0; padding: 10px; padding-bottom: 120px; }
         .header { background: white; padding: 15px; border-radius: 15px; text-align: center; margin-bottom: 15px; }
         .product-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .card { background: white; border-radius: 12px; padding: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .card { background: white; border-radius: 12px; padding: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; flex-direction: column; align-items: center; }
         .card img { width: 100%; height: 100px; border-radius: 8px; object-fit: cover; background: #eee; }
-        .name { font-weight: bold; font-size: 0.85em; margin: 5px 0; height: 35px; overflow: hidden; }
+        .name { font-weight: bold; font-size: 0.85em; margin: 5px 0; height: 35px; overflow: hidden; text-align: center; }
         .price { color: #0088cc; font-weight: bold; margin-bottom: 10px; }
-        .add-btn { background: #0088cc; color: white; border: none; padding: 8px; border-radius: 5px; width: 100%; font-weight: bold; }
-
-        /* THE FIX: Absolute top layer button */
+        .add-btn { background: #0088cc; color: white; border: none; padding: 8px; border-radius: 5px; width: 100%; font-weight: bold; cursor: pointer; }
+        
         #cart-bar { 
-            position: fixed; 
-            bottom: 40px; /* Moved up even more */
-            left: 10%; 
-            right: 10%; 
-            background: #28a745; 
-            color: white; 
-            padding: 20px; 
-            text-align: center; 
-            border-radius: 50px; 
-            font-weight: bold; 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
-            z-index: 2147483647 !important; /* Maximum possible z-index */
-            display: none;
-            cursor: pointer;
-            border: 2px solid white;
+            position: fixed; bottom: 40px; left: 10%; right: 10%; 
+            background: #28a745; color: white; padding: 20px; 
+            text-align: center; border-radius: 50px; font-weight: bold; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 9999; 
+            display: none; cursor: pointer;
         }
+        #loading-text { text-align: center; margin-top: 50px; color: #666; }
     </style>
 </head>
 <body>
 
     <div class="header">
         <h2 style="margin:0;">FLO PEPTIDES</h2>
+        <small>Select items to place order</small>
     </div>
 
+    <div id="loading-text">Searching for peptides...</div>
     <div id="catalog" class="product-grid"></div>
 
-    <div id="cart-bar" onclick="sendOrder()" ontouchstart="sendOrder()">
+    <div id="cart-bar" onclick="sendOrder()">
         🛒 COMPLETE ORDER (<span id="count">0</span>)
     </div>
 
@@ -51,59 +43,81 @@
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        // 🟢 PUT YOUR URL HERE
+        // 🟢 PASTE YOUR EXACT GOOGLE SCRIPT URL HERE
         const API_URL = "https://script.google.com/macros/s/AKfycbyOJa0TSm1oUJyx8NfrVrbNI8SPC35BBUHihv-5XciHoP7lE0t-rnoxGvDAkTFxK0Cd/exec";
 
         let cart = [];
 
         async function loadProducts() {
-            const res = await fetch(API_URL);
-            const products = await res.json();
-            const catalog = document.getElementById('catalog');
-            catalog.innerHTML = '';
-            products.forEach(p => {
-                const d = document.createElement('div');
-                d.className = 'card';
-                d.innerHTML = `
-                    <img src="${p.imageUrl}" onerror="this.src='https://via.placeholder.com/150'">
-                    <div class="name">${p.name}</div>
-                    <div class="price">RM ${p.price}</div>
-                    <button class="add-btn" onclick="addToCart('${p.code}', ${p.price})">Add to Order</button>
-                `;
-                catalog.appendChild(d);
-            });
+            try {
+                const res = await fetch(API_URL);
+                const products = await res.json();
+                const catalog = document.getElementById('catalog');
+                const loader = document.getElementById('loading-text');
+                
+                if (products.length > 0) {
+                    loader.style.display = 'none';
+                    catalog.innerHTML = '';
+                    products.forEach(p => {
+                        const d = document.createElement('div');
+                        d.className = 'card';
+                        d.innerHTML = `
+                            <img src="${p.imageUrl}" onerror="this.src='https://via.placeholder.com/150?text=No+Image'">
+                            <div class="name">${p.name} ${p.mg}</div>
+                            <div class="price">RM ${p.price}</div>
+                            <button class="add-btn" onclick="addToCart('${p.code}', ${p.price})">Add to Order</button>
+                        `;
+                        catalog.appendChild(d);
+                    });
+                }
+            } catch (e) {
+                document.getElementById('loading-text').innerText = "Error connecting to Sheet. Please check API URL.";
+            }
         }
 
         function addToCart(code, price) {
             cart.push({code, price});
             document.getElementById('cart-bar').style.display = 'block';
             document.getElementById('count').innerText = cart.length;
-            if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+            if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
         }
 
-       async function sendOrder() {
-    if (cart.length === 0) return;
-    
-    const bar = document.getElementById('cart-bar');
-    bar.innerText = "SENDING...";
+        async function sendOrder() {
+            if (cart.length === 0) return;
+            
+            const bar = document.getElementById('cart-bar');
+            bar.style.background = "#ffc107"; 
+            bar.innerText = "SENDING ORDER...";
 
-    const total = cart.reduce((a, b) => a + b.price, 0);
-    const summary = cart.map(i => i.code).join(", ");
-    
-    // This part is crucial for the notification!
-    const orderData = {
-        customerName: tg.initDataUnsafe.user?.first_name || "Customer",
-        itemsOrdered: summary,
-        totalPrice: total,
-        chatId: tg.initDataUnsafe.user?.id || "" 
-    };
+            const total = cart.reduce((a, b) => a + b.price, 0);
+            const summary = cart.map(i => i.code).join(", ");
+            const userData = tg.initDataUnsafe.user || {};
 
-    // 1. Tell the Google Sheet to save and send message
-    await fetch(API_URL, {
-        method: 'POST',
-        body: JSON.stringify(orderData)
-    });
+            const orderData = {
+                customerName: userData.first_name || "Guest",
+                itemsOrdered: summary,
+                totalPrice: total,
+                chatId: userData.id || ""
+            };
 
-    // 2. Close app
-    tg.close();
-}
+            try {
+                // 1. Send to Google Sheet
+                await fetch(API_URL, {
+                    method: 'POST',
+                    mode: 'no-cors', // Essential for Google Scripts
+                    body: JSON.stringify(orderData)
+                });
+                
+                // 2. Send via Telegram (for the chat bubble)
+                tg.sendData(JSON.stringify(orderData));
+            } catch (err) {
+                console.log(err);
+            }
+
+            setTimeout(() => { tg.close(); }, 800);
+        }
+
+        loadProducts();
+    </script>
+</body>
+</html>
