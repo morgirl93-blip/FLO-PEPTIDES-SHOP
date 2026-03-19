@@ -87,37 +87,33 @@
             
             const bar = document.getElementById('cart-bar');
             bar.style.background = "#ffc107"; 
-            bar.innerText = "SENDING ORDER...";
+            bar.innerText = "SENDING...";
 
             const total = cart.reduce((a, b) => a + b.price, 0);
             const summary = cart.map(i => i.code).join(", ");
-            const userData = tg.initDataUnsafe.user || {};
+            const user = tg.initDataUnsafe.user || {};
 
             const orderData = {
-                customerName: userData.first_name || "Guest",
+                customerName: user.first_name || "Customer",
                 itemsOrdered: summary,
                 totalPrice: total,
-                chatId: userData.id || ""
+                chatId: user.id // CRITICAL: This is your unique Telegram ID
             };
 
+            // 1. Send DIRECTLY to Google (This fills your sheet)
             try {
-                // 1. Send to Google Sheet
                 await fetch(API_URL, {
                     method: 'POST',
-                    mode: 'no-cors', // Essential for Google Scripts
+                    mode: 'no-cors', 
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(orderData)
                 });
-                
-                // 2. Send via Telegram (for the chat bubble)
-                tg.sendData(JSON.stringify(orderData));
-            } catch (err) {
-                console.log(err);
-            }
+            } catch (e) { console.error(e); }
 
-            setTimeout(() => { tg.close(); }, 800);
+            // 2. Send via Telegram (This makes the bubble appear in chat)
+            // If this works, you will see a text bubble in your history!
+            tg.sendData(JSON.stringify(orderData));
+            
+            setTimeout(() => { tg.close(); }, 1000);
         }
-
-        loadProducts();
-    </script>
-</body>
 </html>
