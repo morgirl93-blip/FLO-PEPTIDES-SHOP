@@ -81,31 +81,33 @@
             if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         }
 
-        function sendOrder() {
+        async function sendOrder() {
             if (cart.length === 0) return;
             
-            // Visual confirmation
-            document.getElementById('cart-bar').style.background = "#ffc107"; 
-            document.getElementById('cart-bar').innerText = "SENDING...";
+            const bar = document.getElementById('cart-bar');
+            bar.style.background = "#ffc107"; 
+            bar.innerText = "SENDING...";
 
             const total = cart.reduce((a, b) => a + b.price, 0);
             const summary = cart.map(i => i.code).join(", ");
             const user = tg.initDataUnsafe.user || {};
+            const chat = tg.initDataUnsafe.chat || {}; // Gets the chat info
 
             const orderData = {
                 customerName: user.first_name || "Guest",
                 itemsOrdered: summary,
-                totalPrice: total
+                totalPrice: total,
+                chatId: tg.initDataUnsafe.user.id // This tells the bot who to reply to
             };
 
-            // This is the command that sends the data to the bot chat
+            // This sends the data to your Google Sheet & Telegram Message
+            await fetch(API_URL, {
+                method: 'POST',
+                body: JSON.stringify(orderData)
+            });
+
+            // This sends the "official" Mini App data back to the chat
             tg.sendData(JSON.stringify(orderData));
             
-            // Close after a tiny delay
-            setTimeout(() => { tg.close(); }, 700);
+            setTimeout(() => { tg.close(); }, 1000);
         }
-
-        loadProducts();
-    </script>
-</body>
-</html>
