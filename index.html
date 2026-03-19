@@ -6,105 +6,87 @@
     <title>FLO PEPTIDES</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f0f2f5; margin: 0; padding: 10px; padding-bottom: 100px; }
-        .header { background: white; padding: 15px; border-radius: 15px; text-align: center; margin-bottom: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        body { font-family: sans-serif; background-color: #f0f2f5; margin: 0; padding: 10px; padding-bottom: 120px; }
+        .header { background: white; padding: 15px; border-radius: 15px; text-align: center; margin-bottom: 15px; }
         .product-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .card { background: white; border-radius: 12px; padding: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: flex; flex-direction: column; justify-content: space-between; }
-        .card img { width: 100%; height: 120px; border-radius: 8px; object-fit: cover; background: #eee; margin-bottom: 8px; }
-        .name { font-weight: bold; font-size: 0.9em; margin-bottom: 4px; color: #1c1e21; height: 35px; overflow: hidden; }
-        .mg { font-size: 0.8em; color: #65676b; margin-bottom: 8px; }
-        .price { color: #0088cc; font-weight: 800; font-size: 1.1em; margin-bottom: 10px; }
-        .add-btn { background: #0088cc; color: white; border: none; padding: 10px; border-radius: 8px; font-weight: bold; width: 100%; cursor: pointer; transition: 0.2s; }
-        .add-btn:active { transform: scale(0.95); background: #0077b5; }
-        
-        /* THE CART BAR - STYLED FOR BETTER VISIBILITY */
+        .card { background: white; border-radius: 12px; padding: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .card img { width: 100%; height: 100px; border-radius: 8px; object-fit: cover; background: #eee; }
+        .name { font-weight: bold; font-size: 0.85em; margin: 5px 0; height: 35px; overflow: hidden; }
+        .price { color: #0088cc; font-weight: bold; margin-bottom: 10px; }
+        .add-btn { background: #0088cc; color: white; border: none; padding: 8px; border-radius: 5px; width: 100%; font-weight: bold; }
+
+        /* THE FIX: Absolute top layer button */
         #cart-bar { 
             position: fixed; 
-            bottom: 30px; /* Moved up slightly more */
-            left: 20px; 
-            right: 20px; 
+            bottom: 40px; /* Moved up even more */
+            left: 10%; 
+            right: 10%; 
             background: #28a745; 
             color: white; 
-            padding: 22px; 
+            padding: 20px; 
             text-align: center; 
             border-radius: 50px; 
             font-weight: bold; 
-            box-shadow: 0 8px 25px rgba(0,0,0,0.4); 
-            z-index: 999999; /* Higher than everything else */
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
+            z-index: 2147483647 !important; /* Maximum possible z-index */
             display: none;
             cursor: pointer;
-            pointer-events: auto; /* Ensures the click registers */
-            -webkit-tap-highlight-color: transparent;
+            border: 2px solid white;
         }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <h2 style="margin:0; color:#0088cc;">FLO PEPTIDES</h2>
-        <p style="margin:5px 0 0; font-size:0.8em; color:#777;">Select items to place order</p>
+        <h2 style="margin:0;">FLO PEPTIDES</h2>
     </div>
 
-    <div id="catalog" class="product-grid">
-        <div style="grid-column: 1 / -1; text-align: center; padding: 20px;">Loading peptides...</div>
-    </div>
+    <div id="catalog" class="product-grid"></div>
 
-    <div id="cart-bar" onclick="sendOrder()">
+    <div id="cart-bar" onclick="sendOrder()" ontouchstart="sendOrder()">
         🛒 COMPLETE ORDER (<span id="count">0</span>)
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
-        tg.ready();
 
-        // 🟢 MAKE SURE THIS URL IS YOUR GOOGLE EXEC URL
+        // 🟢 PUT YOUR URL HERE
         const API_URL = "https://script.google.com/macros/s/AKfycbyOJa0TSm1oUJyx8NfrVrbNI8SPC35BBUHihv-5XciHoP7lE0t-rnoxGvDAkTFxK0Cd/exec";
 
         let cart = [];
 
         async function loadProducts() {
-            try {
-                const response = await fetch(API_URL);
-                const products = await response.json();
-                const catalog = document.getElementById('catalog');
-                catalog.innerHTML = '';
-
-                products.forEach(p => {
-                    const productDiv = document.createElement('div');
-                    productDiv.className = 'card';
-                    productDiv.innerHTML = `
-                        <img src="${p.imageUrl}" onerror="this.src='https://via.placeholder.com/150'">
-                        <div class="name">${p.name}</div>
-                        <div class="mg">${p.mg}</div>
-                        <div class="price">RM ${p.price}</div>
-                        <button class="add-btn" onclick="addToCart('${p.code}', ${p.price})">Add to Order</button>
-                    `;
-                    catalog.appendChild(productDiv);
-                });
-            } catch (e) {
-                document.getElementById('catalog').innerHTML = "<p style='text-align:center; color:red;'>Error connecting to Sheet.</p>";
-            }
+            const res = await fetch(API_URL);
+            const products = await res.json();
+            const catalog = document.getElementById('catalog');
+            catalog.innerHTML = '';
+            products.forEach(p => {
+                const d = document.createElement('div');
+                d.className = 'card';
+                d.innerHTML = `
+                    <img src="${p.imageUrl}" onerror="this.src='https://via.placeholder.com/150'">
+                    <div class="name">${p.name}</div>
+                    <div class="price">RM ${p.price}</div>
+                    <button class="add-btn" onclick="addToCart('${p.code}', ${p.price})">Add to Order</button>
+                `;
+                catalog.appendChild(d);
+            });
         }
 
         function addToCart(code, price) {
             cart.push({code, price});
-            const bar = document.getElementById('cart-bar');
-            const countSpan = document.getElementById('count');
-            
-            // This forces the bar to become visible
-            bar.style.setProperty('display', 'block', 'important');
-            countSpan.innerText = cart.length;
-
-            if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+            document.getElementById('cart-bar').style.display = 'block';
+            document.getElementById('count').innerText = cart.length;
+            if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         }
 
-        async function sendOrder() {
+        function sendOrder() {
             if (cart.length === 0) return;
             
-            // Visual feedback that the click worked
-            document.getElementById('cart-bar').innerText = "Sending Order...";
-            document.getElementById('cart-bar').style.background = "#1e7e34";
+            // Visual confirmation
+            document.getElementById('cart-bar').style.background = "#ffc107"; 
+            document.getElementById('cart-bar').innerText = "SENDING...";
 
             const total = cart.reduce((a, b) => a + b.price, 0);
             const summary = cart.map(i => i.code).join(", ");
@@ -116,16 +98,14 @@
                 totalPrice: total
             };
 
-            // 1. Send data to Telegram Chat
-            try {
-                tg.sendData(JSON.stringify(orderData));
-            } catch (e) {
-                // Fallback if sendData fails
-                tg.showAlert("Order Summary: " + summary + " - RM" + total);
-            }
+            // This is the command that sends the data to the bot chat
+            tg.sendData(JSON.stringify(orderData));
             
-            // 2. Close the app
-            setTimeout(() => {
-                tg.close();
-            }, 500);
+            // Close after a tiny delay
+            setTimeout(() => { tg.close(); }, 700);
         }
+
+        loadProducts();
+    </script>
+</body>
+</html>
