@@ -2,59 +2,56 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Peptide Shop</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>FLO PEPTIDES</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { font-family: sans-serif; background-color: #f4f4f9; margin: 0; padding: 15px; color: #333; }
-        .header { text-align: center; padding: 20px 0; }
-        .product-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        .card { background: white; border-radius: 12px; padding: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); text-align: center; }
-        .card img { width: 100%; border-radius: 8px; height: 120px; object-fit: cover; background: #eee; }
-        .price { color: #2ecc71; font-weight: bold; margin: 5px 0; }
-        .name { font-size: 0.9em; height: 35px; overflow: hidden; font-weight: bold; }
-        .mg { font-size: 0.8em; color: #777; }
-        button { background: #0088cc; color: white; border: none; padding: 8px 15px; border-radius: 20px; width: 100%; margin-top: 10px; cursor: pointer; }
-        .cart-bar { position: fixed; 
-    bottom: 20px; /* Moves it up away from the screen edge */
-    left: 10px; 
-    right: 10px; 
-    background: #0088cc; 
-    color: white; 
-    padding: 18px; 
-    text-align: center; 
-    display: none; /* This stays hidden until you add an item */
-    font-weight: bold; 
-    border-radius: 50px; /* Makes it look like a floating pill button */
-    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-    z-index: 9999;
-}
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f0f2f5; margin: 0; padding: 10px; padding-bottom: 100px; }
+        .header { background: white; padding: 15px; border-radius: 15px; text-align: center; margin-bottom: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .product-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .card { background: white; border-radius: 12px; padding: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: flex; flex-direction: column; justify-content: space-between; }
+        .card img { width: 100%; height: 120px; border-radius: 8px; object-fit: cover; background: #eee; margin-bottom: 8px; }
+        .name { font-weight: bold; font-size: 0.9em; margin-bottom: 4px; color: #1c1e21; height: 35px; overflow: hidden; }
+        .mg { font-size: 0.8em; color: #65676b; margin-bottom: 8px; }
+        .price { color: #0088cc; font-weight: 800; font-size: 1.1em; margin-bottom: 10px; }
+        .add-btn { background: #0088cc; color: white; border: none; padding: 10px; border-radius: 8px; font-weight: bold; width: 100%; cursor: pointer; transition: 0.2s; }
+        .add-btn:active { transform: scale(0.95); background: #0077b5; }
+        
+        /* THE CART BAR - STYLED FOR BETTER VISIBILITY */
+        #cart-bar { 
+            position: fixed; bottom: 20px; left: 15px; right: 15px; 
+            background: #28a745; color: white; padding: 20px; 
+            text-align: center; border-radius: 15px; font-weight: bold; 
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3); z-index: 10000;
+            display: none; /* Initially hidden */
+        }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <h2>Peptide Catalog</h2>
+        <h2 style="margin:0; color:#0088cc;">FLO PEPTIDES</h2>
+        <p style="margin:5px 0 0; font-size:0.8em; color:#777;">Select items to place order</p>
     </div>
 
     <div id="catalog" class="product-grid">
-        <p>Loading peptides...</p>
+        <div style="grid-column: 1 / -1; text-align: center; padding: 20px;">Loading peptides...</div>
     </div>
 
-    <div id="cart-bar" class="cart-bar" onclick="sendOrder()">
-        View Order & Send to Chat
+    <div id="cart-bar" onclick="sendOrder()">
+        🛒 COMPLETE ORDER (<span id="count">0</span>)
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
-        tg.expand(); // Opens the app to full height
+        tg.expand();
+        tg.ready();
 
-        // 🟢 REPLACE THIS URL with your Google Web App URL
+        // 🟢 MAKE SURE THIS URL IS YOUR GOOGLE EXEC URL
         const API_URL = "https://script.google.com/macros/s/AKfycbyOJa0TSm1oUJyx8NfrVrbNI8SPC35BBUHihv-5XciHoP7lE0t-rnoxGvDAkTFxK0Cd/exec";
 
         let cart = [];
 
-        // Fetch products from Google Sheets
         async function loadProducts() {
             try {
                 const response = await fetch(API_URL);
@@ -63,38 +60,63 @@
                 catalog.innerHTML = '';
 
                 products.forEach(p => {
-                    catalog.innerHTML += `
-                        <div class="card">
-                            <img src="${p.imageUrl}" onerror="this.src='https://via.placeholder.com/150'">
-                            <div class="name">${p.name}</div>
-                            <div class="mg">${p.mg}</div>
-                            <div class="price">RM ${p.price}</div>
-                            <button onclick="addToCart('${p.code}', ${p.price})">Add to Order</button>
-                        </div>
+                    const productDiv = document.createElement('div');
+                    productDiv.className = 'card';
+                    productDiv.innerHTML = `
+                        <img src="${p.imageUrl}" onerror="this.src='https://via.placeholder.com/150'">
+                        <div class="name">${p.name}</div>
+                        <div class="mg">${p.mg}</div>
+                        <div class="price">RM ${p.price}</div>
+                        <button class="add-btn" onclick="addToCart('${p.code}', ${p.price})">Add to Order</button>
                     `;
+                    catalog.appendChild(productDiv);
                 });
             } catch (e) {
-                document.getElementById('catalog').innerHTML = "Error loading products.";
+                document.getElementById('catalog').innerHTML = "<p style='text-align:center; color:red;'>Error connecting to Sheet.</p>";
             }
         }
 
         function addToCart(code, price) {
             cart.push({code, price});
-            document.getElementById('cart-bar').style.display = 'block';
-            document.getElementById('cart-bar').innerText = `Order (${cart.length} items) - RM ${cart.reduce((a, b) => a + b.price, 0)}`;
+            
+            // Show the bar and update numbers
+            const bar = document.getElementById('cart-bar');
+            const countSpan = document.getElementById('count');
+            
+            bar.style.display = 'block';
+            countSpan.innerText = cart.length;
+
+            // Haptic feedback (vibrates the phone slightly)
+            if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
         }
 
-        function sendOrder() {
+        async function sendOrder() {
+            if (cart.length === 0) return;
+
             const total = cart.reduce((a, b) => a + b.price, 0);
             const summary = cart.map(i => i.code).join(", ");
-            
-            // This sends the data back to your Telegram Bot
-            tg.sendData(JSON.stringify({
-                customerName: tg.initDataUnsafe.user?.first_name || "Customer",
+            const user = tg.initDataUnsafe.user || {};
+
+            const orderData = {
+                customerName: user.first_name || "Unknown Customer",
                 itemsOrdered: summary,
                 totalPrice: total
-            }));
-            
+            };
+
+            // 1. Send data to Google Sheet
+            try {
+                await fetch(API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify(orderData)
+                });
+                
+                tg.showAlert("✅ Order Received! Checking inventory now.");
+            } catch (err) {
+                console.error(err);
+            }
+
+            // 2. Send data back to Telegram Chat
+            tg.sendData(JSON.stringify(orderData));
             tg.close();
         }
 
