@@ -83,37 +83,33 @@
         }
 
         async function sendOrder() {
-            if (cart.length === 0) return;
-            
-            const bar = document.getElementById('cart-bar');
-            bar.style.background = "#ffc107"; 
-            bar.innerText = "SENDING...";
+    if (cart.length === 0) return;
+    
+    const bar = document.getElementById('cart-bar');
+    bar.style.background = "#ffc107"; 
+    bar.innerText = "PROCESSING...";
 
-            const total = cart.reduce((a, b) => a + b.price, 0);
-            const summary = cart.map(i => i.code).join(", ");
-            const user = tg.initDataUnsafe.user || {};
+    const total = cart.reduce((a, b) => a + b.price, 0);
+    const summary = cart.map(i => i.code).join(", ");
+    
+    // Pulling user data directly from Telegram's initData
+    const user = window.Telegram.WebApp.initDataUnsafe.user || {};
 
-            const orderData = {
-                customerName: user.first_name || "Customer",
-                itemsOrdered: summary,
-                totalPrice: total,
-                chatId: user.id // CRITICAL: This is your unique Telegram ID
-            };
+    const orderData = {
+        customerName: user.first_name || "Guest",
+        itemsOrdered: summary,
+        totalPrice: total,
+        chatId: user.id || "" // This MUST be present for the bot to reply
+    };
 
-            // 1. Send DIRECTLY to Google (This fills your sheet)
-            try {
-                await fetch(API_URL, {
-                    method: 'POST',
-                    mode: 'no-cors', 
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(orderData)
-                });
-            } catch (e) { console.error(e); }
+    // 1. Send to Google (for Sheet and Bot Message)
+    await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify(orderData)
+    });
 
-            // 2. Send via Telegram (This makes the bubble appear in chat)
-            // If this works, you will see a text bubble in your history!
-            tg.sendData(JSON.stringify(orderData));
-            
-            setTimeout(() => { tg.close(); }, 1000);
-        }
-</html>
+    // 2. This makes the order appear in the chat history bubble
+    window.Telegram.WebApp.sendData(JSON.stringify(orderData));
+    
+    setTimeout(() => { window.Telegram.WebApp.close(); }, 1000);
+}
