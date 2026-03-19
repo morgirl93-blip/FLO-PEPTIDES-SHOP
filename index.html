@@ -19,11 +19,22 @@
         
         /* THE CART BAR - STYLED FOR BETTER VISIBILITY */
         #cart-bar { 
-            position: fixed; bottom: 20px; left: 15px; right: 15px; 
-            background: #28a745; color: white; padding: 20px; 
-            text-align: center; border-radius: 15px; font-weight: bold; 
-            box-shadow: 0 5px 20px rgba(0,0,0,0.3); z-index: 10000;
-            display: none; /* Initially hidden */
+            position: fixed; 
+            bottom: 30px; /* Moved up slightly more */
+            left: 20px; 
+            right: 20px; 
+            background: #28a745; 
+            color: white; 
+            padding: 22px; 
+            text-align: center; 
+            border-radius: 50px; 
+            font-weight: bold; 
+            box-shadow: 0 8px 25px rgba(0,0,0,0.4); 
+            z-index: 999999; /* Higher than everything else */
+            display: none;
+            cursor: pointer;
+            pointer-events: auto; /* Ensures the click registers */
+            -webkit-tap-highlight-color: transparent;
         }
     </style>
 </head>
@@ -90,6 +101,11 @@
 
         async function sendOrder() {
             if (cart.length === 0) return;
+            
+            // Visual feedback that the click worked
+            document.getElementById('cart-bar').innerText = "Sending Order...";
+            document.getElementById('cart-bar').style.background = "#1e7e34";
+
             const total = cart.reduce((a, b) => a + b.price, 0);
             const summary = cart.map(i => i.code).join(", ");
             const user = tg.initDataUnsafe.user || {};
@@ -100,11 +116,16 @@
                 totalPrice: total
             };
 
-            tg.sendData(JSON.stringify(orderData));
-            tg.close();
+            // 1. Send data to Telegram Chat
+            try {
+                tg.sendData(JSON.stringify(orderData));
+            } catch (e) {
+                // Fallback if sendData fails
+                tg.showAlert("Order Summary: " + summary + " - RM" + total);
+            }
+            
+            // 2. Close the app
+            setTimeout(() => {
+                tg.close();
+            }, 500);
         }
-
-        loadProducts();
-    </script>
-</body>
-</html>
