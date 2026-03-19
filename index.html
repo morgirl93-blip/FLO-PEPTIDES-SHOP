@@ -81,33 +81,29 @@
             if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         }
 
-        async function sendOrder() {
-            if (cart.length === 0) return;
-            
-            const bar = document.getElementById('cart-bar');
-            bar.style.background = "#ffc107"; 
-            bar.innerText = "SENDING...";
+       async function sendOrder() {
+    if (cart.length === 0) return;
+    
+    const bar = document.getElementById('cart-bar');
+    bar.innerText = "SENDING...";
 
-            const total = cart.reduce((a, b) => a + b.price, 0);
-            const summary = cart.map(i => i.code).join(", ");
-            const user = tg.initDataUnsafe.user || {};
-            const chat = tg.initDataUnsafe.chat || {}; // Gets the chat info
+    const total = cart.reduce((a, b) => a + b.price, 0);
+    const summary = cart.map(i => i.code).join(", ");
+    
+    // This part is crucial for the notification!
+    const orderData = {
+        customerName: tg.initDataUnsafe.user?.first_name || "Customer",
+        itemsOrdered: summary,
+        totalPrice: total,
+        chatId: tg.initDataUnsafe.user?.id || "" 
+    };
 
-            const orderData = {
-                customerName: user.first_name || "Guest",
-                itemsOrdered: summary,
-                totalPrice: total,
-                chatId: tg.initDataUnsafe.user.id // This tells the bot who to reply to
-            };
+    // 1. Tell the Google Sheet to save and send message
+    await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify(orderData)
+    });
 
-            // This sends the data to your Google Sheet & Telegram Message
-            await fetch(API_URL, {
-                method: 'POST',
-                body: JSON.stringify(orderData)
-            });
-
-            // This sends the "official" Mini App data back to the chat
-            tg.sendData(JSON.stringify(orderData));
-            
-            setTimeout(() => { tg.close(); }, 1000);
-        }
+    // 2. Close app
+    tg.close();
+}
